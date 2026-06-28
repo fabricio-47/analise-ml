@@ -55,13 +55,7 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
 
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-.upload-area { border: 1.5px dashed var(--border-strong); border-radius: var(--radius); padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; margin-bottom: 10px; }
-.upload-area:hover { border-color: var(--accent); background: var(--accent-bg); }
-.upload-area input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.upload-area .icon { font-size: 28px; margin-bottom: 6px; }
-.upload-area p { font-size: 13px; color: var(--text-sec); }
-.upload-area small { font-size: 11px; color: var(--text-muted); }
-.preview-img { width: 100%; border-radius: var(--radius); margin-top: 8px; display: none; }
+
 
 .seller-item { background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; position: relative; }
 .seller-item .remove-btn { position: absolute; top: 8px; right: 8px; background: var(--danger-bg); color: var(--danger-text); border: none; border-radius: 5px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
@@ -129,6 +123,7 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
     <h1>Análise de Concorrentes</h1>
     <p>ML & Shopee · Especialista em E-commerce</p>
   </div>
+  <div style="margin-left:auto; background:var(--accent-bg); border:0.5px solid var(--accent); border-radius:20px; padding:3px 10px; font-size:11px; color:var(--accent-text); white-space:nowrap;">v1.2</div>
 </header>
 
 <div class="container">
@@ -162,17 +157,7 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
     </div>
   </div>
 
-  <!-- Print dos concorrentes -->
-  <div class="card">
-    <div class="card-title">Prints dos concorrentes (opcional)</div>
-    <div class="upload-area" id="upload-area" id="paste-zone">
-      <input type="file" id="foto-input" accept="image/*" multiple onchange="adicionarFotos(this.files)">
-      <div class="icon">📸</div>
-      <p>Selecione fotos ou cole com Ctrl+V</p>
-      <small>Cole com Ctrl+V ou selecione — usa a 1ª imagem para análise</small>
-    </div>
-    <div id="fotos-preview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
-  </div>
+
 
   <!-- Dados manuais dos concorrentes -->
   <div class="card">
@@ -205,7 +190,6 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
 
 <script>
 let sellers = [];
-let fotosBase64 = [];
 
 function addSeller() {
   const id = Date.now();
@@ -274,50 +258,7 @@ function renderSellers() {
   `).join('');
 }
 
-function adicionarFotos(files) {
-  Array.from(files).forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      fotosBase64.push(e.target.result.split(',')[1]);
-      renderFotos();
-    };
-    reader.readAsDataURL(file);
-  });
-}
 
-function renderFotos() {
-  const preview = document.getElementById('fotos-preview');
-  preview.innerHTML = fotosBase64.map((b64, i) => `
-    <div style="position:relative; display:inline-block;">
-      <img src="data:image/jpeg;base64,${b64}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:0.5px solid var(--border);">
-      <button onclick="removerFoto(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
-    </div>
-  `).join('');
-}
-
-function removerFoto(i) {
-  fotosBase64.splice(i, 1);
-  renderFotos();
-}
-
-document.addEventListener('paste', e => {
-  const items = e.clipboardData?.items;
-  if (!items) return;
-  Array.from(items).forEach(item => {
-    if (item.type.startsWith('image/')) {
-      const file = item.getAsFile();
-      const reader = new FileReader();
-      reader.onload = ev => {
-        fotosBase64.push(ev.target.result.split(',')[1]);
-        renderFotos();
-        const area = document.getElementById('upload-area');
-        area.style.borderColor = 'var(--success)';
-        setTimeout(() => area.style.borderColor = '', 1000);
-      };
-      reader.readAsDataURL(file);
-    }
-  });
-});
 
 function coletarSellers() {
   return sellers.map((s, i) => {
@@ -397,16 +338,7 @@ Forneça uma análise COMPLETA e DIRETA. Responda EXATAMENTE neste formato JSON 
 }`;
 
   try {
-    // Usa no maximo 1 foto para nao sobrecarregar
-  let messages;
-  if (fotosBase64.length > 0) {
-    messages = [{ role: 'user', content: [
-      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: fotosBase64[0] } },
-      { type: 'text', text: prompt }
-    ]}];
-  } else {
-    messages = [{ role: 'user', content: prompt }];
-  }
+    const messages = [{ role: 'user', content: prompt }];
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -492,8 +424,6 @@ function novaAnalise() {
   document.getElementById('produto-nome').value = '';
   document.getElementById('meu-custo').value = '';
   document.getElementById('preview-img').style.display = 'none';
-  fotosBase64 = [];
-  document.getElementById('fotos-preview').innerHTML = '';
   sellers = [];
   renderSellers();
   window.scrollTo({ top: 0, behavior: 'smooth' });
