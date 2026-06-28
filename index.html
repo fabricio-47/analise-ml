@@ -307,35 +307,11 @@ async function analisar() {
 
   const platLabel = { ambas: 'Mercado Livre e Shopee', ml: 'Mercado Livre', shopee: 'Shopee' }[plat];
 
-  const prompt = `Você é um especialista sênior em e-commerce brasileiro com 10 anos de experiência em Mercado Livre e Shopee. Analise a viabilidade de entrada neste mercado para um seller iniciante/médio.
-
-PRODUTO: ${nome}
-MEU CUSTO UNITÁRIO: R$ ${custo}
-MINHA MARGEM DESEJADA: ${margem}%
-PLATAFORMA ALVO: ${platLabel}
-
-CONCORRENTES IDENTIFICADOS:
-${sellersText}
-
-${fotoBase64 ? 'Analise também a imagem enviada com a tela dos concorrentes.' : ''}
-
-Forneça uma análise COMPLETA e DIRETA. Responda EXATAMENTE neste formato JSON (sem markdown, sem código, só o JSON puro):
-
-{
-  "veredicto": "COMPRA" ou "NAO_COMPRA" ou "CAUTELA",
-  "titulo_veredicto": "frase curta e direta do veredicto",
-  "margem_possivel": "XX.X",
-  "preco_sugerido": "XX.XX",
-  "dificuldade_ranking": "ALTA" ou "MEDIA" ou "BAIXA",
-  "potencial_vendas_mes": "XX a XX unidades",
-  "score_viabilidade": "XX",
-  "analise_mercado": "análise detalhada do mercado, volume, demanda e sazonalidade (3-4 frases)",
-  "analise_concorrencia": "análise dos concorrentes, pontos fortes e fracos deles, onde você pode se diferenciar (3-4 frases)",
-  "analise_financeira": "análise financeira completa: sua margem real, preço ideal de entrada, break-even, ROI estimado (3-4 frases)",
-  "estrategia_ranking": "como ranquear este produto: SEO do título, imagens, política de frete, Ads recomendado, tempo estimado para página 1 (4-5 frases)",
-  "riscos": "principais riscos e como mitigar (2-3 frases)",
-  "plano_acao": "plano de ação em 3 passos para entrar neste mercado agora (3 passos numerados)"
-}`;
+  const prompt = `Especialista e-commerce BR. Analise viabilidade de entrada.
+PRODUTO: ${nome} | CUSTO: R$${custo} | MARGEM: ${margem}% | PLATAFORMA: ${platLabel}
+CONCORRENTES: ${sellersText}
+Responda SOMENTE JSON puro, sem markdown, sem explicacao:
+{"veredicto":"COMPRA ou NAO_COMPRA ou CAUTELA","titulo_veredicto":"frase curta","margem_possivel":"XX.X","preco_sugerido":"XX.XX","dificuldade_ranking":"ALTA ou MEDIA ou BAIXA","potencial_vendas_mes":"XX a XX","score_viabilidade":"XX","analise_mercado":"2 frases","analise_concorrencia":"2 frases","analise_financeira":"2 frases","estrategia_ranking":"3 frases","riscos":"1 frase","plano_acao":"3 passos numerados"}`;
 
   try {
     const messages = [{ role: 'user', content: prompt }];
@@ -423,7 +399,6 @@ function novaAnalise() {
   document.getElementById('result').className = 'result';
   document.getElementById('produto-nome').value = '';
   document.getElementById('meu-custo').value = '';
-  document.getElementById('preview-img').style.display = 'none';
   sellers = [];
   renderSellers();
   window.scrollTo({ top: 0, behavior: 'smooth' });
