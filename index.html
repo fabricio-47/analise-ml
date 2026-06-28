@@ -1,1 +1,411 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Análise ML">
+<title>Análise de Concorrentes — E-commerce</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1a1a24;
+  --border: rgba(255,255,255,0.08);
+  --border-strong: rgba(255,255,255,0.15);
+  --text: #f0f0ee;
+  --text-sec: #a0a09a;
+  --text-muted: #5a5a58;
+  --accent: #6c63ff;
+  --accent-bg: rgba(108,99,255,0.12);
+  --accent-text: #a89fff;
+  --success: #1baf7a;
+  --success-bg: rgba(27,175,122,0.12);
+  --success-text: #7fe3c3;
+  --danger: #e24b4a;
+  --danger-bg: rgba(226,75,74,0.12);
+  --danger-text: #f09595;
+  --warning: #ef9f27;
+  --warning-bg: rgba(239,159,39,0.12);
+  --warning-text: #fac775;
+  --radius: 10px;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 3rem; }
+
+header { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 1rem 1.25rem; position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; }
+.logo { width: 36px; height: 36px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+header h1 { font-size: 15px; font-weight: 500; }
+header p { font-size: 12px; color: var(--text-muted); }
+
+.container { max-width: 520px; margin: 0 auto; padding: 1.25rem 1rem 0; }
+
+.card { background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px; padding: 1.25rem; margin-bottom: 1rem; }
+.card-title { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 1rem; }
+
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.field label { font-size: 12px; color: var(--text-sec); }
+.field-inner { display: flex; align-items: center; border: 0.5px solid var(--border-strong); border-radius: var(--radius); background: var(--surface2); overflow: hidden; }
+.field-inner span { padding: 0 10px; font-size: 13px; color: var(--text-muted); border-right: 0.5px solid var(--border); white-space: nowrap; }
+.field-inner span.suffix { border-right: none; border-left: 0.5px solid var(--border); }
+.field-inner input, .field-inner select { border: none; background: transparent; padding: 10px 10px; font-size: 14px; color: var(--text); width: 100%; outline: none; -webkit-appearance: none; }
+.field-inner select option { background: #1a1a24; }
+textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius: var(--radius); background: var(--surface2); padding: 10px; font-size: 13px; color: var(--text); outline: none; resize: none; font-family: inherit; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+
+
+.seller-item { background: var(--surface2); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; margin-bottom: 8px; position: relative; }
+.seller-item .remove-btn { position: absolute; top: 8px; right: 8px; background: var(--danger-bg); color: var(--danger-text); border: none; border-radius: 5px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+.seller-item h4 { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--text); }
+.seller-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text-sec); }
+.seller-meta span { display: flex; align-items: center; gap: 4px; }
+
+.btn { width: 100%; padding: 13px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+.btn:active { transform: scale(0.98); opacity: 0.88; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-secondary { background: var(--surface2); border: 0.5px solid var(--border-strong); color: var(--text-sec); margin-bottom: 8px; }
+.btn-add { background: transparent; border: 0.5px dashed var(--border-strong); color: var(--text-sec); font-size: 13px; padding: 8px; margin-bottom: 10px; }
+
+.loading { display: none; text-align: center; padding: 2rem; }
+.loading.visible { display: block; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.result { display: none; }
+.result.visible { display: block; }
+
+.verdict { border-radius: 14px; padding: 1.25rem; margin-bottom: 1rem; text-align: center; }
+.verdict.compra { background: var(--success-bg); border: 1px solid var(--success); }
+.verdict.nao-compra { background: var(--danger-bg); border: 1px solid var(--danger); }
+.verdict.cautela { background: var(--warning-bg); border: 1px solid var(--warning); }
+.verdict .v-icon { font-size: 36px; margin-bottom: 8px; }
+.verdict .v-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+.verdict.compra .v-title { color: var(--success-text); }
+.verdict.nao-compra .v-title { color: var(--danger-text); }
+.verdict.cautela .v-title { color: var(--warning-text); }
+.verdict .v-sub { font-size: 13px; color: var(--text-sec); }
+
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+.metric { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 12px; }
+.metric .m-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.metric .m-value { font-size: 18px; font-weight: 600; }
+.metric .m-value.green { color: var(--success-text); }
+.metric .m-value.red { color: var(--danger-text); }
+.metric .m-value.yellow { color: var(--warning-text); }
+.metric .m-value.purple { color: var(--accent-text); }
+.metric .m-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.report-section { background: var(--surface); border: 0.5px solid var(--border); border-radius: 14px; padding: 1.25rem; margin-bottom: 1rem; }
+.report-section h3 { font-size: 13px; font-weight: 600; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+.report-text { font-size: 13px; color: var(--text); line-height: 1.7; white-space: pre-wrap; }
+
+.stars { color: var(--warning); }
+
+.platform-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-ml { background: rgba(255,230,0,0.15); color: #ffe600; }
+.badge-sh { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(238,77,45,0.15); color: #ff6b47; }
+
+.tag-compra { background: var(--success-bg); color: var(--success-text); padding: 3px 10px; border-radius: 20px; font-size: 12px; display: inline-block; }
+.tag-perigo { background: var(--danger-bg); color: var(--danger-text); padding: 3px 10px; border-radius: 20px; font-size: 12px; display: inline-block; }
+.tag-atencao { background: var(--warning-bg); color: var(--warning-text); padding: 3px 10px; border-radius: 20px; font-size: 12px; display: inline-block; }
+
+.nova-analise { margin-top: 1rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🔍</div>
+  <div>
+    <h1>Análise de Concorrentes</h1>
+    <p>ML & Shopee · Especialista em E-commerce</p>
+  </div>
+  <div style="margin-left:auto; background:var(--accent-bg); border:0.5px solid var(--accent); border-radius:20px; padding:3px 10px; font-size:11px; color:var(--accent-text); white-space:nowrap;">v1.2</div>
+</header>
+
+<div class="container">
+
+  <!-- Dados do seu produto -->
+  <div class="card">
+    <div class="card-title">Seu produto</div>
+    <div class="field">
+      <label>Nome do produto</label>
+      <div class="field-inner"><input type="text" id="produto-nome" placeholder="ex: Kit 2 Disco Rebolo Diamantado 100mm"></div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Seu custo unitário</label>
+        <div class="field-inner"><span>R$</span><input type="number" id="meu-custo" step="0.01" min="0" inputmode="decimal" placeholder="7,50"></div>
+      </div>
+      <div class="field">
+        <label>Margem desejada</label>
+        <div class="field-inner"><input type="number" id="minha-margem" value="12" step="1" inputmode="numeric"><span class="suffix">%</span></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Plataforma alvo</label>
+      <div class="field-inner">
+        <select id="plataforma">
+          <option value="ambas">Mercado Livre + Shopee</option>
+          <option value="ml">Mercado Livre</option>
+          <option value="shopee">Shopee</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- Dados manuais dos concorrentes -->
+  <div class="card">
+    <div class="card-title">Dados dos concorrentes</div>
+    <div id="sellers-list"></div>
+    <button class="btn btn-add" onclick="addSeller()">+ Adicionar concorrente</button>
+  </div>
+
+  <!-- Botão analisar -->
+  <button class="btn btn-primary" onclick="analisar()">Analisar com IA ↗</button>
+
+  <!-- Loading -->
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p style="font-size:14px; color:var(--text-sec);" id="loading-msg">Analisando concorrência...</p>
+  </div>
+
+  <!-- Resultado -->
+  <div class="result" id="result">
+    <div id="verdict-box"></div>
+    <div class="metric-grid" id="metrics-box"></div>
+    <div class="report-section">
+      <h3>Relatório completo</h3>
+      <div class="report-text" id="report-text"></div>
+    </div>
+    <button class="btn btn-secondary nova-analise" onclick="novaAnalise()">Nova análise</button>
+  </div>
+
+</div>
+
+<script>
+let sellers = [];
+
+function addSeller() {
+  const id = Date.now();
+  sellers.push({ id });
+  renderSellers();
+}
+
+function removeSeller(id) {
+  sellers = sellers.filter(s => s.id !== id);
+  renderSellers();
+}
+
+function renderSellers() {
+  const list = document.getElementById('sellers-list');
+  if (sellers.length === 0) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--text-muted);text-align:center;padding:8px 0;">Nenhum concorrente adicionado ainda</p>';
+    return;
+  }
+  list.innerHTML = sellers.map((s, i) => `
+    <div class="seller-item">
+      <button class="remove-btn" onclick="removeSeller(${s.id})">remover</button>
+      <h4>Concorrente ${i + 1}</h4>
+      <div class="row2">
+        <div class="field">
+          <label>Plataforma</label>
+          <div class="field-inner">
+            <select id="s-plat-${s.id}" style="font-size:13px;">
+              <option value="ml">Mercado Livre</option>
+              <option value="shopee">Shopee</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Preço de venda</label>
+          <div class="field-inner"><span>R$</span><input type="number" id="s-preco-${s.id}" step="0.01" inputmode="decimal" placeholder="49,90"></div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Vendas/mês (aprox.)</label>
+          <div class="field-inner"><input type="number" id="s-vendas-${s.id}" inputmode="numeric" placeholder="150"></div>
+        </div>
+        <div class="field">
+          <label>Avaliação (1-5)</label>
+          <div class="field-inner"><input type="number" id="s-aval-${s.id}" step="0.1" min="1" max="5" inputmode="decimal" placeholder="4.8"></div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Nº de reviews</label>
+          <div class="field-inner"><input type="number" id="s-reviews-${s.id}" inputmode="numeric" placeholder="320"></div>
+        </div>
+        <div class="field">
+          <label>Tipo de vendedor</label>
+          <div class="field-inner">
+            <select id="s-tipo-${s.id}" style="font-size:13px;">
+              <option value="loja">Loja oficial</option>
+              <option value="grande">Grande seller</option>
+              <option value="medio">Médio seller</option>
+              <option value="pequeno">Pequeno seller</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+
+
+function coletarSellers() {
+  return sellers.map((s, i) => {
+    return {
+      numero: i + 1,
+      plataforma: document.getElementById('s-plat-' + s.id)?.value || '',
+      preco: document.getElementById('s-preco-' + s.id)?.value || '',
+      vendas: document.getElementById('s-vendas-' + s.id)?.value || '',
+      avaliacao: document.getElementById('s-aval-' + s.id)?.value || '',
+      reviews: document.getElementById('s-reviews-' + s.id)?.value || '',
+      tipo: document.getElementById('s-tipo-' + s.id)?.value || ''
+    };
+  });
+}
+
+const msgs = [
+  'Analisando concorrência...',
+  'Calculando margens e custos...',
+  'Avaliando dificuldade de ranking...',
+  'Gerando relatório especialista...'
+];
+
+async function analisar() {
+  const nome = document.getElementById('produto-nome').value.trim();
+  const custo = document.getElementById('meu-custo').value;
+  const margem = document.getElementById('minha-margem').value;
+  const plat = document.getElementById('plataforma').value;
+  const sellersData = coletarSellers();
+
+  if (!nome || !custo) {
+    alert('Preencha o nome do produto e seu custo unitário.');
+    return;
+  }
+
+  document.getElementById('loading').className = 'loading visible';
+  document.getElementById('result').className = 'result';
+  let mi = 0;
+  const intv = setInterval(() => {
+    document.getElementById('loading-msg').textContent = msgs[mi % msgs.length];
+    mi++;
+  }, 2000);
+
+  const sellersText = sellersData.length > 0
+    ? sellersData.map(s => `Concorrente ${s.numero}: ${s.plataforma.toUpperCase()} | Preço: R$${s.preco} | Vendas/mês: ${s.vendas} | Avaliação: ${s.avaliacao} (${s.reviews} reviews) | Tipo: ${s.tipo}`).join('\n')
+    : 'Nenhum dado manual inserido (analise a partir da imagem se disponível)';
+
+  const platLabel = { ambas: 'Mercado Livre e Shopee', ml: 'Mercado Livre', shopee: 'Shopee' }[plat];
+
+  const prompt = `Especialista e-commerce BR. Analise viabilidade de entrada.
+PRODUTO: ${nome} | CUSTO: R$${custo} | MARGEM: ${margem}% | PLATAFORMA: ${platLabel}
+CONCORRENTES: ${sellersText}
+Responda SOMENTE JSON puro, sem markdown, sem explicacao:
+{"veredicto":"COMPRA ou NAO_COMPRA ou CAUTELA","titulo_veredicto":"frase curta","margem_possivel":"XX.X","preco_sugerido":"XX.XX","dificuldade_ranking":"ALTA ou MEDIA ou BAIXA","potencial_vendas_mes":"XX a XX","score_viabilidade":"XX","analise_mercado":"2 frases","analise_concorrencia":"2 frases","analise_financeira":"2 frases","estrategia_ranking":"3 frases","riscos":"1 frase","plano_acao":"3 passos numerados"}`;
+
+  try {
+    const messages = [{ role: 'user', content: prompt }];
+
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 600, messages })
+    });
+
+    const data = await resp.json();
+    clearInterval(intv);
+    document.getElementById('loading').className = 'loading';
+
+    const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    let json;
+    try {
+      json = JSON.parse(raw.replace(/```json|```/g, '').trim());
+    } catch {
+      json = {
+        veredicto: 'CAUTELA',
+        titulo_veredicto: 'Análise gerada',
+        margem_possivel: '—',
+        preco_sugerido: '—',
+        dificuldade_ranking: 'MEDIA',
+        potencial_vendas_mes: '—',
+        score_viabilidade: '—',
+        analise_mercado: raw,
+        analise_concorrencia: '',
+        analise_financeira: '',
+        estrategia_ranking: '',
+        riscos: '',
+        plano_acao: ''
+      };
+    }
+
+    renderResult(json);
+
+  } catch (e) {
+    clearInterval(intv);
+    document.getElementById('loading').className = 'loading';
+    alert('Erro ao conectar com a IA. Tente novamente.');
+  }
+}
+
+function renderResult(j) {
+  const vMap = {
+    COMPRA: { cls: 'compra', icon: '✅', cor: 'green' },
+    NAO_COMPRA: { cls: 'nao-compra', icon: '🚫', cor: 'red' },
+    CAUTELA: { cls: 'cautela', icon: '⚠️', cor: 'yellow' }
+  };
+  const v = vMap[j.veredicto] || vMap.CAUTELA;
+  const difMap = { ALTA: { cor: 'red', label: 'Alta' }, MEDIA: { cor: 'yellow', label: 'Média' }, BAIXA: { cor: 'green', label: 'Baixa' } };
+  const dif = difMap[j.dificuldade_ranking] || difMap.MEDIA;
+
+  document.getElementById('verdict-box').innerHTML = `
+    <div class="verdict ${v.cls}" style="margin-bottom:1rem;">
+      <div class="v-icon">${v.icon}</div>
+      <div class="v-title">${j.titulo_veredicto}</div>
+      <div class="v-sub">${j.veredicto === 'COMPRA' ? 'Vale a pena entrar neste mercado' : j.veredicto === 'NAO_COMPRA' ? 'Não recomendado no momento' : 'Avalie com cuidado antes de investir'}</div>
+    </div>`;
+
+  document.getElementById('metrics-box').innerHTML = `
+    <div class="metric"><div class="m-label">Margem possível</div><div class="m-value ${v.cor}">${j.margem_possivel}%</div><div class="m-sub">líquido estimado</div></div>
+    <div class="metric"><div class="m-label">Preço sugerido</div><div class="m-value purple">R$ ${j.preco_sugerido}</div><div class="m-sub">para entrar competindo</div></div>
+    <div class="metric"><div class="m-label">Dificuldade ranking</div><div class="m-value ${dif.cor}">${dif.label}</div><div class="m-sub">para chegar à pág. 1</div></div>
+    <div class="metric"><div class="m-label">Potencial vendas</div><div class="m-value yellow">${j.potencial_vendas_mes}</div><div class="m-sub">por mês estimado</div></div>
+    <div class="metric"><div class="m-label">Score viabilidade</div><div class="m-value ${parseInt(j.score_viabilidade) >= 70 ? 'green' : parseInt(j.score_viabilidade) >= 50 ? 'yellow' : 'red'}">${j.score_viabilidade}/100</div><div class="m-sub">índice geral</div></div>
+  `;
+
+  let report = '';
+  if (j.analise_mercado) report += `📊 MERCADO\n${j.analise_mercado}\n\n`;
+  if (j.analise_concorrencia) report += `⚔️ CONCORRÊNCIA\n${j.analise_concorrencia}\n\n`;
+  if (j.analise_financeira) report += `💰 FINANCEIRO\n${j.analise_financeira}\n\n`;
+  if (j.estrategia_ranking) report += `🚀 ESTRATÉGIA DE RANKING\n${j.estrategia_ranking}\n\n`;
+  if (j.riscos) report += `⚠️ RISCOS\n${j.riscos}\n\n`;
+  if (j.plano_acao) report += `📋 PLANO DE AÇÃO\n${j.plano_acao}`;
+
+  document.getElementById('report-text').textContent = report.trim();
+  document.getElementById('result').className = 'result visible';
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+}
+
+function novaAnalise() {
+  document.getElementById('result').className = 'result';
+  document.getElementById('produto-nome').value = '';
+  document.getElementById('meu-custo').value = '';
+  sellers = [];
+  renderSellers();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+renderSellers();
+</script>
+</body>
+</html>
