@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -114,6 +113,12 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
 .tag-atencao { background: var(--warning-bg); color: var(--warning-text); padding: 3px 10px; border-radius: 20px; font-size: 12px; display: inline-block; }
 
 .nova-analise { margin-top: 1rem; }
+.upload-area { border: 1.5px dashed var(--border-strong); border-radius: var(--radius); padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+.upload-area:hover { border-color: var(--accent); background: var(--accent-bg); }
+.upload-area input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-area .icon { font-size: 28px; margin-bottom: 6px; }
+.upload-area p { font-size: 13px; color: var(--text-sec); }
+.upload-area small { font-size: 11px; color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -124,7 +129,7 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
     <h1>Análise de Concorrentes</h1>
     <p>ML & Shopee · Especialista em E-commerce</p>
   </div>
-  <div style="margin-left:auto; background:var(--accent-bg); border:0.5px solid var(--accent); border-radius:20px; padding:3px 10px; font-size:11px; color:var(--accent-text); white-space:nowrap;">v1.2</div>
+  <div style="margin-left:auto; background:var(--accent-bg); border:0.5px solid var(--accent); border-radius:20px; padding:3px 10px; font-size:11px; color:var(--accent-text); white-space:nowrap;">v1.4</div>
 </header>
 
 <div class="container">
@@ -167,6 +172,18 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
     <button class="btn btn-add" onclick="addSeller()">+ Adicionar concorrente</button>
   </div>
 
+  <!-- Foto opcional comprimida -->
+  <div class="card">
+    <div class="card-title">Print do concorrente (opcional)</div>
+    <div class="upload-area" id="upload-area">
+      <input type="file" id="foto-input" accept="image/*" onchange="carregarFoto(this)">
+      <div class="icon" id="upload-icon">📸</div>
+      <p id="upload-txt">Selecione ou cole com Ctrl+V</p>
+      <small>Imagem comprimida automaticamente — análise rápida</small>
+    </div>
+    <canvas id="canvas-compressor" style="display:none;"></canvas>
+  </div>
+
   <!-- Botão analisar -->
   <button class="btn btn-primary" onclick="analisar()">Analisar com IA ↗</button>
 
@@ -191,6 +208,43 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
 
 <script>
 let sellers = [];
+let fotoBase64 = null;
+
+function carregarFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.getElementById('canvas-compressor');
+      const MAX = 600;
+      let w = img.width, h = img.height;
+      if (w > MAX) { h = h * MAX / w; w = MAX; }
+      if (h > MAX) { w = w * MAX / h; h = MAX; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      fotoBase64 = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+      document.getElementById('upload-icon').textContent = '✅';
+      document.getElementById('upload-txt').textContent = 'Imagem carregada e comprimida!';
+      document.getElementById('upload-area').style.borderColor = 'var(--success)';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.addEventListener('paste', e => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  Array.from(items).forEach(item => {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      const input = { files: [file] };
+      carregarFoto(input);
+    }
+  });
+});
 
 function addSeller() {
   const id = Date.now();
@@ -315,12 +369,20 @@ Responda SOMENTE JSON puro, sem markdown, sem explicacao:
 {"veredicto":"COMPRA ou NAO_COMPRA ou CAUTELA","titulo_veredicto":"frase curta","margem_possivel":"XX.X","preco_sugerido":"XX.XX","dificuldade_ranking":"ALTA ou MEDIA ou BAIXA","potencial_vendas_mes":"XX a XX","score_viabilidade":"XX","analise_mercado":"2 frases","analise_concorrencia":"2 frases","analise_financeira":"2 frases","estrategia_ranking":"3 frases","riscos":"1 frase","plano_acao":"3 passos numerados"}`;
 
   try {
-    const messages = [{ role: 'user', content: prompt }];
+    let messages;
+  if (fotoBase64) {
+    messages = [{ role: 'user', content: [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: fotoBase64 } },
+      { type: 'text', text: prompt }
+    ]}];
+  } else {
+    messages = [{ role: 'user', content: prompt }];
+  }
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 600, messages })
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, messages })
     });
 
     const data = await resp.json();
@@ -330,22 +392,30 @@ Responda SOMENTE JSON puro, sem markdown, sem explicacao:
     const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
     let json;
     try {
-      json = JSON.parse(raw.replace(/```json|```/g, '').trim());
+      // Tenta extrair JSON de qualquer lugar no texto
+      const match = raw.match(/\{[\s\S]*\}/);
+      const jsonStr = match ? match[0] : raw.replace(/```json|```/g, '').trim();
+      json = JSON.parse(jsonStr);
     } catch {
+      // Se falhar tenta extrair campos manualmente
+      const get = (key) => {
+        const m = raw.match(new RegExp('"' + key + '"\s*:\s*"([^"]*)"'));
+        return m ? m[1] : '—';
+      };
       json = {
-        veredicto: 'CAUTELA',
-        titulo_veredicto: 'Análise gerada',
-        margem_possivel: '—',
-        preco_sugerido: '—',
-        dificuldade_ranking: 'MEDIA',
-        potencial_vendas_mes: '—',
-        score_viabilidade: '—',
-        analise_mercado: raw,
-        analise_concorrencia: '',
-        analise_financeira: '',
-        estrategia_ranking: '',
-        riscos: '',
-        plano_acao: ''
+        veredicto: get('veredicto') || 'CAUTELA',
+        titulo_veredicto: get('titulo_veredicto') || 'Análise gerada',
+        margem_possivel: get('margem_possivel') || '—',
+        preco_sugerido: get('preco_sugerido') || '—',
+        dificuldade_ranking: get('dificuldade_ranking') || 'MEDIA',
+        potencial_vendas_mes: get('potencial_vendas_mes') || '—',
+        score_viabilidade: get('score_viabilidade') || '—',
+        analise_mercado: get('analise_mercado') || raw.substring(0, 300),
+        analise_concorrencia: get('analise_concorrencia') || '',
+        analise_financeira: get('analise_financeira') || '',
+        estrategia_ranking: get('estrategia_ranking') || '',
+        riscos: get('riscos') || '',
+        plano_acao: get('plano_acao') || ''
       };
     }
 
@@ -400,6 +470,10 @@ function novaAnalise() {
   document.getElementById('result').className = 'result';
   document.getElementById('produto-nome').value = '';
   document.getElementById('meu-custo').value = '';
+  fotoBase64 = null;
+  document.getElementById('upload-icon').textContent = '📸';
+  document.getElementById('upload-txt').textContent = 'Selecione ou cole com Ctrl+V';
+  document.getElementById('upload-area').style.borderColor = '';
   sellers = [];
   renderSellers();
   window.scrollTo({ top: 0, behavior: 'smooth' });
