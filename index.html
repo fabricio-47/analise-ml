@@ -164,14 +164,14 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
 
   <!-- Print dos concorrentes -->
   <div class="card">
-    <div class="card-title">Print da tela (opcional)</div>
-    <div class="upload-area" id="upload-area">
-      <input type="file" id="foto-input" accept="image/*" onchange="previewFoto(this)">
+    <div class="card-title">Prints dos concorrentes (opcional)</div>
+    <div class="upload-area" id="upload-area" id="paste-zone">
+      <input type="file" id="foto-input" accept="image/*" multiple onchange="adicionarFotos(this.files)">
       <div class="icon">📸</div>
-      <p>Tire foto da tela com os concorrentes</p>
-      <small>Página de resultados do ML ou Shopee</small>
+      <p>Selecione fotos ou cole com Ctrl+V</p>
+      <small>Aceita múltiplas imagens — ML, Shopee, qualquer print</small>
     </div>
-    <img id="preview-img" class="preview-img">
+    <div id="fotos-preview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
   </div>
 
   <!-- Dados manuais dos concorrentes -->
@@ -205,7 +205,7 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
 
 <script>
 let sellers = [];
-let fotoBase64 = null;
+let fotosBase64 = [];
 
 function addSeller() {
   const id = Date.now();
@@ -274,18 +274,50 @@ function renderSellers() {
   `).join('');
 }
 
-function previewFoto(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    fotoBase64 = e.target.result.split(',')[1];
-    const img = document.getElementById('preview-img');
-    img.src = e.target.result;
-    img.style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+function adicionarFotos(files) {
+  Array.from(files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      fotosBase64.push(e.target.result.split(',')[1]);
+      renderFotos();
+    };
+    reader.readAsDataURL(file);
+  });
 }
+
+function renderFotos() {
+  const preview = document.getElementById('fotos-preview');
+  preview.innerHTML = fotosBase64.map((b64, i) => `
+    <div style="position:relative; display:inline-block;">
+      <img src="data:image/jpeg;base64,${b64}" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:0.5px solid var(--border);">
+      <button onclick="removerFoto(${i})" style="position:absolute;top:-6px;right:-6px;background:var(--danger);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+  `).join('');
+}
+
+function removerFoto(i) {
+  fotosBase64.splice(i, 1);
+  renderFotos();
+}
+
+document.addEventListener('paste', e => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  Array.from(items).forEach(item => {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = ev => {
+        fotosBase64.push(ev.target.result.split(',')[1]);
+        renderFotos();
+        const area = document.getElementById('upload-area');
+        area.style.borderColor = 'var(--success)';
+        setTimeout(() => area.style.borderColor = '', 1000);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+});
 
 function coletarSellers() {
   return sellers.map((s, i) => {
@@ -365,12 +397,12 @@ Forneça uma análise COMPLETA e DIRETA. Responda EXATAMENTE neste formato JSON 
 }`;
 
   try {
-    const messages = fotoBase64
-      ? [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: fotoBase64 } },
-          { type: 'text', text: prompt }
-        ]}]
-      : [{ role: 'user', content: prompt }];
+    let msgContent = [];
+  fotosBase64.forEach(b64 => {
+    msgContent.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } });
+  });
+  msgContent.push({ type: 'text', text: prompt });
+  const messages = [{ role: 'user', content: msgContent.length > 1 ? msgContent : prompt }];
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -456,7 +488,8 @@ function novaAnalise() {
   document.getElementById('produto-nome').value = '';
   document.getElementById('meu-custo').value = '';
   document.getElementById('preview-img').style.display = 'none';
-  fotoBase64 = null;
+  fotosBase64 = [];
+  document.getElementById('fotos-preview').innerHTML = '';
   sellers = [];
   renderSellers();
   window.scrollTo({ top: 0, behavior: 'smooth' });
