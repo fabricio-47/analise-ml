@@ -169,7 +169,7 @@ textarea { width: 100%; border: 0.5px solid var(--border-strong); border-radius:
       <input type="file" id="foto-input" accept="image/*" multiple onchange="adicionarFotos(this.files)">
       <div class="icon">📸</div>
       <p>Selecione fotos ou cole com Ctrl+V</p>
-      <small>Aceita múltiplas imagens — ML, Shopee, qualquer print</small>
+      <small>Cole com Ctrl+V ou selecione — usa a 1ª imagem para análise</small>
     </div>
     <div id="fotos-preview" style="display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;"></div>
   </div>
@@ -397,17 +397,21 @@ Forneça uma análise COMPLETA e DIRETA. Responda EXATAMENTE neste formato JSON 
 }`;
 
   try {
-    let msgContent = [];
-  fotosBase64.forEach(b64 => {
-    msgContent.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } });
-  });
-  msgContent.push({ type: 'text', text: prompt });
-  const messages = [{ role: 'user', content: msgContent.length > 1 ? msgContent : prompt }];
+    // Usa no maximo 1 foto para nao sobrecarregar
+  let messages;
+  if (fotosBase64.length > 0) {
+    messages = [{ role: 'user', content: [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: fotosBase64[0] } },
+      { type: 'text', text: prompt }
+    ]}];
+  } else {
+    messages = [{ role: 'user', content: prompt }];
+  }
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1000, messages })
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 600, messages })
     });
 
     const data = await resp.json();
